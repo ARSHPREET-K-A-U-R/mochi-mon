@@ -2,45 +2,1222 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Award, Bell, CalendarDays, Check, ChevronRight, Circle, Clock3, Coins, Eye, Flame, Flower2, Grid3X3, Heart, LayoutGrid, List, MessageCircle, MoreHorizontal, Palette, Pencil, Plus, Search, Send, Settings, Sparkles, Star, Target, TimerReset, Trash2, Trophy, Users, X } from 'lucide-react'
+import { useSession } from '@/lib/auth-client'
 
 type Task = { id:number; title:string; category:string; priority:'High'|'Medium'|'Low'; due:string; done:boolean; subtasks:number; total:number; recurring?:boolean }
-const seedTasks:Task[]=[
- {id:1,title:'Review biology lecture notes',category:'Study',priority:'High',due:'Today',done:false,subtasks:2,total:4},
- {id:2,title:'Complete calculus problem set',category:'Study',priority:'High',due:'Today',done:false,subtasks:5,total:8},
- {id:3,title:'Read 20 pages of Atomic Habits',category:'Personal',priority:'Medium',due:'Today',done:true,subtasks:1,total:1},
- {id:4,title:'Morning stretch & water',category:'Health',priority:'Low',due:'Today',done:true,subtasks:3,total:3,recurring:true},
- {id:5,title:'Draft project introduction',category:'Projects',priority:'Medium',due:'Tomorrow',done:false,subtasks:0,total:0},
-]
+
+const seedTasks:Task[]=[]
+
 const nav=[{label:'Today',icon:Target},{label:'Tasks',icon:List},{label:'Study Café',icon:Users},{label:'Insights',icon:Sparkles}]
+
 const extraNav=[{label:'Calendar',icon:CalendarDays},{label:'Achievements',icon:Trophy},{label:'Settings',icon:Settings}]
+
 const roster=[['Mochi','apricot','Common'],['Boba','mint','Rare'],['Pip','sky','Common'],['Clover','sage','Dreamy'],['Miso','berry','Rare'],['Nori','blue','Common'],['Lumi','gold','Dreamy'],['Taro','rose','Rare'],['Puff','lavender','Common'],['Sprout','leaf','Dreamy'],['Suki','coral','Rare'],['Bean','coffee','Common'],['Dew','aqua','Dreamy'],['Kiki','peach','Rare'],['Nova','night','Dreamy'],['Mallow','cream','Common']]
 
-function Creature({tint='',small=false,label='Companion'}:{tint?:string;small?:boolean;label?:string}){return <div className={`creature ${tint} ${small?'creature-small':''}`} role="img" aria-label={label}><i className="ear ear-left"/><i className="ear ear-right"/><i className="eye eye-left"/><i className="eye eye-right"/><i className="mouth"/><i className="blush blush-left"/><i className="blush blush-right"/></div>}
-function Plant({stage,color}:{stage:number;color:string}){return <div className={`plant plant-${stage}`} style={{'--plant':color} as React.CSSProperties}><i className="stem"/><i className="leaf left"/><i className="leaf right"/><b>{stage>2?'✦':''}</b></div>}
-
-export default function MochiDashboard(){
- const [active,setActive]=useState('Today'); const [tasks,setTasks]=useState(seedTasks); const [filter,setFilter]=useState('All tasks'); const [view,setView]=useState<'list'|'board'>('list'); const [query,setQuery]=useState(''); const [showAdd,setShowAdd]=useState(false); const [editing,setEditing]=useState<Task|null>(null); const [seconds,setSeconds]=useState(25*60); const [running,setRunning]=useState(false); const [coins,setCoins]=useState(1240); const [chat,setChat]=useState(['Mia sent a focus high-five','Sam joined the café']); const [cafeChat,setCafeChat]=useState('');
- useEffect(()=>{if(!running)return; const id=setInterval(()=>setSeconds(s=>s? s-1:25*60),1000); return()=>clearInterval(id)},[running])
- const visible=useMemo(()=>tasks.filter(t=>(filter==='All tasks'||(filter==='Completed'&&t.done)||t.category===filter)&&t.title.toLowerCase().includes(query.toLowerCase())),[tasks,filter,query]); const completed=tasks.filter(t=>t.done).length
- const toggle=(id:number)=>setTasks(xs=>xs.map(t=>t.id===id?{...t,done:!t.done}:t)); const remove=(id:number)=>setTasks(xs=>xs.filter(t=>t.id!==id));
- return <main className="dashboard-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark"><Sparkles size={17}/></div><span>Mochi<span className="brand-accent">Mon</span></span></div><button className="profile" onClick={()=>setActive('Settings')}><div className="avatar">AL</div><div><b>Alex Lee</b><span>Level 12 · 2,840 XP</span></div><MoreHorizontal size={17}/></button><nav className="main-nav" aria-label="Primary navigation">{nav.map(({label,icon:Icon})=><button key={label} className={`nav-item ${active===label?'active':''}`} onClick={()=>setActive(label)}><Icon size={18}/><span>{label}</span>{label==='Today'&&<i>3</i>}</button>)}</nav><div className="sidebar-label">YOUR SPACE</div>{extraNav.map(({label,icon:Icon})=><button key={label} className={`nav-item ${active===label?'active':''}`} onClick={()=>setActive(label)}><Icon size={18}/><span>{label}</span></button>)}<div className="sidebar-bottom"><div className="mini-quest"><div className="quest-icon"><Flame size={17}/></div><div><b>7 day streak</b><span>Keep it going!</span></div></div></div></aside><section className="content-area"><header className="topbar"><div><p className="eyebrow">Wednesday, October 16, 2024</p><h1>{active==='Today'?'Good morning, Alex':active}</h1></div><div className="top-actions"><div className="coin-pill"><Coins size={17}/>{coins.toLocaleString()}</div><button className="icon-button" aria-label="Messages" onClick={()=>setActive('Study Café')}><MessageCircle size={19}/></button><div className="avatar small">AL</div></div></header>{(active==='Today'||active==='Tasks')&&<TasksView page={active} tasks={tasks} visible={visible} completed={completed} filter={filter} setFilter={setFilter} view={view} setView={setView} query={query} setQuery={setQuery} showAdd={showAdd} setShowAdd={setShowAdd} editing={editing} setEditing={setEditing} toggle={toggle} remove={remove} onSave={(t:Task)=>{setTasks(xs=>xs.some(x=>x.id===t.id)?xs.map(x=>x.id===t.id?t:x):[t,...xs]);setShowAdd(false);setEditing(null);setCoins(c=>c+10)}} />}{active==='Study Café'&&<CafeView chat={chat} setChat={setChat} cafeChat={cafeChat} setCafeChat={setCafeChat}/>} {active==='Settings'&&<SettingsView/>}{active==='Focus Mode'&&<FocusView seconds={seconds} running={running} setRunning={setRunning}/>} {active==='Habit Garden'&&<GardenView/>}{active==='Collection'&&<CollectionView/>}{active==='Calendar'&&<CalendarView/>}{active==='Insights'&&<InsightsView/>}{active==='Achievements'&&<AchievementsView/>}</section></main>
+function Creature({tint='',small=false,label='Companion'}:{tint?:string;small?:boolean;label?:string}){
+  return <div className={`creature ${tint} ${small?'creature-small':''}`} role="img" aria-label={label}>
+    <i className="ear ear-left"/>
+    <i className="ear ear-right"/>
+    <i className="eye eye-left"/>
+    <i className="eye eye-right"/>
+    <i className="mouth"/>
+    <i className="blush blush-left"/>
+    <i className="blush blush-right"/>
+  </div>
 }
 
-function TasksView(p:any){const {page,tasks,visible,completed,filter,setFilter,view,setView,query,setQuery,showAdd,setShowAdd,editing,setEditing,toggle,remove,onSave}=p; return <><div className="progress-banner"><div className="banner-copy"><div className="sparkle-icon"><Sparkles size={21}/></div><div><b>You&apos;re on a roll!</b><span>Complete {Math.max(0,2-(5-completed))} more tasks to reach your daily goal.</span></div></div><div className="goal-progress"><b>{completed}/5</b><div className="progress-track"><div style={{width:`${Math.min(100,completed/5*100)}%`}}/></div><span>Daily goal</span></div><Creature small/></div><div className="dashboard-grid"><section className="tasks-panel panel"><div className="panel-heading"><div><h2>{page==='Tasks'?(filter==='All tasks'?'All tasks':filter):(filter==='All tasks'?"Today's tasks":filter)}</h2><p>{completed} completed · {tasks.length-completed} remaining</p></div><button className="primary-button" onClick={()=>setShowAdd(true)}><Plus size={17}/> Add task</button></div><div className="task-toolbar"><div className="filter-tabs">{['All tasks','Study','Personal','Health','Completed'].map(x=><button key={x} className={filter===x?'selected':''} onClick={()=>setFilter(x)}>{x}</button>)}</div><div className="toolbar-right"><div className="search-box"><Search size={15}/><input aria-label="Search tasks" placeholder="Search" value={query} onChange={e=>setQuery(e.target.value)}/></div><button className={view==='list'?'view-active':''} onClick={()=>setView('list')} aria-label="List view"><List size={17}/></button><button className={view==='board'?'view-active':''} onClick={()=>setView('board')} aria-label="Board view"><LayoutGrid size={17}/></button></div></div>{(showAdd||editing)&&<TaskForm initial={editing} onCancel={()=>{setShowAdd(false);setEditing(null)}} onSave={onSave}/>} {view==='list'?<div className="task-list">{visible.length?visible.map((t:Task)=><TaskRow key={t.id} task={t} toggle={toggle} remove={remove} edit={setEditing}/>):<div className="empty-state"><Target size={25}/><b>No tasks match</b><span>Try another filter or add a fresh task.</span></div>}</div>:<div className="board-grid">{['Today','Tomorrow','Later'].map(col=><div className="board-column" key={col}><h3>{col}</h3>{visible.filter((t:Task)=>col==='Later'?t.due!=='Today'&&t.due!=='Tomorrow':t.due===col).map((t:Task)=><TaskCard key={t.id} task={t} toggle={toggle}/>)}</div>)}</div>}</section><aside className="right-column"><CompanionCard/><section className="panel quests-card"><div className="card-heading"><h2>Today&apos;s quests</h2><button onClick={()=>setFilter('Completed')}>See all</button></div><Quest text="Complete 3 tasks" reward="+50 coins" done={completed>=3}/><Quest text="Focus for 25 minutes" reward="+30 XP"/><Quest text="Check in with a friend" reward="+20 XP"/></section><section className="panel focus-card"><div><span className="card-kicker">FOCUS SESSION</span><h2>25:00</h2><p>Ready when you are.</p></div><button className="focus-play" onClick={()=>{setShowAdd(false);window.dispatchEvent(new CustomEvent('focus-mode'))}}><TimerReset size={14}/> Start</button></section></aside></div></>}
-function TaskForm({initial,onCancel,onSave}:{initial?:Task|null;onCancel:()=>void;onSave:(t:Task)=>void}){const [title,setTitle]=useState(initial?.title||'');const [due,setDue]=useState(initial?.due||'Today');const [priority,setPriority]=useState<Task['priority']>(initial?.priority||'Medium');const [category,setCategory]=useState(initial?.category||'Personal');return <form className="task-form" onSubmit={e=>{e.preventDefault();if(title.trim())onSave({id:initial?.id||Date.now(),title:title.trim(),due,priority,category,done:initial?.done||false,subtasks:initial?.subtasks||0,total:initial?.total||0})}}><input autoFocus aria-label="Task title" placeholder="Task title" value={title} onChange={e=>setTitle(e.target.value)}/><select aria-label="Due date" value={due} onChange={e=>setDue(e.target.value)}><option>Today</option><option>Tomorrow</option><option>Later</option></select><select aria-label="Priority" value={priority} onChange={e=>setPriority(e.target.value as Task['priority'])}><option>High</option><option>Medium</option><option>Low</option></select><select aria-label="Category" value={category} onChange={e=>setCategory(e.target.value)}><option>Study</option><option>Personal</option><option>Health</option><option>Projects</option></select><button className="primary-button" type="submit">{initial?'Save':'Add task'}</button><button type="button" className="text-button" onClick={onCancel}>Cancel</button></form>}
-function TaskRow({task,toggle,remove,edit}:{task:Task;toggle:(id:number)=>void;remove:(id:number)=>void;edit:(t:Task)=>void}){return <article className={`task-row ${task.done?'is-done':''}`}><button className="check-button" onClick={()=>toggle(task.id)} aria-label={`Mark ${task.title} ${task.done?'incomplete':'complete'}`}>{task.done?<Check size={14}/>:<Circle size={16}/>}</button><div className="task-info"><b>{task.title}</b><span><em className={`tag ${task.category.toLowerCase()}`}>{task.category}</em>{task.subtasks>0&&<small>{task.subtasks}/{task.total} subtasks</small>}</span></div><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><span className="due"><Clock3 size={13}/>{task.due}</span><button className="row-action" onClick={()=>edit(task)} aria-label={`Edit ${task.title}`}><Pencil size={14}/></button><button className="row-action danger" onClick={()=>remove(task.id)} aria-label={`Delete ${task.title}`}><Trash2 size={14}/></button></article>}
-function TaskCard({task,toggle}:{task:Task;toggle:(id:number)=>void}){return <article className="board-card"><button className="check-button" onClick={()=>toggle(task.id)}>{task.done?<Check size={14}/>:<Circle size={16}/>}</button><b>{task.title}</b><div><span className={`tag ${task.category.toLowerCase()}`}>{task.category}</span><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span></div></article>}
-function CompanionCard(){return <section className="panel companion-card"><span className="card-kicker">YOUR COMPANION</span><div className="companion-content"><Creature/><div><h2>Mochi</h2><p>Feeling cozy today</p><div className="level-line"><b>Lv. 12</b><div className="progress-track"><div style={{width:'72%'}}/></div><span>2,840 XP</span></div></div></div><div className="companion-stats"><div><b>7</b><span>day streak</span></div><div><b>24</b><span>tasks done</span></div><div><b>86%</b><span>focus score</span></div></div></section>}
-function Quest({text,reward,done=false}:{text:string;reward:string;done?:boolean}){const [complete,setComplete]=useState(done);return <button className={`quest-row ${complete?'is-done':''}`} onClick={()=>setComplete(v=>!v)} aria-pressed={complete}><span className="quest-check">{complete?<Check size={13}/>:<Circle size={15}/>}</span><div><b>{text}</b><span>{complete?'Completed · ':''}{reward}</span></div><ChevronRight size={15}/></button>}
-function PageTitle({eyebrow,title,action,onAction}:{eyebrow:string;title:string;action?:string;onAction?:()=>void}){return <div className="page-title"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>{action&&<button className="primary-button" onClick={onAction}><Plus size={15}/>{action}</button>}</div>}
+function Plant({stage,color}:{stage:number;color:string}){
+  return <div className={`plant plant-${stage}`} style={{'--plant':color} as React.CSSProperties}>
+    <i className="stem"/>
+    <i className="leaf left"/>
+    <i className="leaf right"/>
+    <b>{stage>2?'✦':''}</b>
+  </div>
+}
 
-function CafeView({chat,setChat,cafeChat,setCafeChat}:any){const guests=[['Alex','Review biology','mint','18:42','focus'],['Mia','Essay outline','berry','12:08','break'],['Sam','Calculus set','blue','32:15','focus'],['Jo','Away from desk','gold','—','away']]; return <div><PageTitle eyebrow="STUDY CAFÉ · ROOM 04" title="Moonbeam Café" action="Invite friend" onAction={()=>setChat((c:string[])=>[...c,'A new friend was invited to Moonbeam Café'])}/><div className="isometric-cafe"><div className="cafe-backwall"><div className="cafe-window"/><div className="cafe-shelf">JARS · BOOKS · TEA · PLANTS</div><div className="menu-board"><b>MOONBEAM MENU</b><span>honey latte · 4c</span><span>berry toast · 3c</span><span>starlight tea · 2c</span></div><div className="string-lights">●　●　●　●　●　●</div></div><div className="floor-grid"/><div className="cafe-counter"><span className="counter-awning"/><Creature tint="chef" small label="chef creature serving"/><div className="cups"><i/><i/><i/></div></div><div className="booth booth-left"><Creature tint="rose" small label="creature reading"/><span className="book"/></div><div className="booth booth-right"><Creature tint="sky" small label="creature chatting"/><Creature tint="sage" small label="creature chatting"/></div><div className="reserved-table"><span className="nameplate">ALEX + FRIENDS</span><Creature tint="mint" small label="Alex companion reserved table"/><Creature tint="peach" small label="friend companion reserved table"/><div className="snack"/><div className="steam"/></div><div className="cafe-table tiny-table table-a"><Creature tint="berry" small label="sleeping creature"/><span className="cup"/></div><div className="cafe-table tiny-table table-b"><Creature tint="lavender" small label="creature with scarf"/><span className="plate"/></div><div className="cafe-table tiny-table table-c"><Creature tint="gold" small label="creature with bow"/><span className="cup"/></div><div className="plant-prop"><Plant stage={4} color="#75ae92"/></div><div className="door"><span className="door-bell">●</span></div><div className="sparkles">✦　·　✦　·　✦</div></div><div className="cafe-layout"><section className="panel session-panel"><div className="card-heading"><div><span className="card-kicker">LIVE SESSION</span><h2>4 friends studying</h2></div><span className="live-dot">Live</span></div>{guests.map(([name,task,time,status],i)=><div className="friend-row" key={name}><div className={`avatar ${status}`}>{name.slice(0,2)}</div><div><b>{name}</b><span>{task}</span></div><strong>{time}</strong><i className={`status ${status}`}/></div>)}</section><section className="panel cafe-chat"><div className="card-heading"><h2>Café notes</h2><MessageCircle size={17}/></div>{chat.map((x:string)=><p key={x}>{x}</p>)}<div className="reaction-bar"><button onClick={()=>setChat((c:string[])=>[...c,'Alex sent a tea reaction'])}>Tea</button><button onClick={()=>setChat((c:string[])=>[...c,'Alex sent a cheer reaction'])}>Cheer</button></div><form onSubmit={e=>{e.preventDefault();if(cafeChat.trim()){setChat((c:string[])=>[...c,`Alex: ${cafeChat.trim()}`]);setCafeChat('')}}} className="chat-input"><input aria-label="Café message" value={cafeChat} onChange={e=>setCafeChat(e.target.value)} placeholder="Say something kind..."/><button aria-label="Send message"><Send size={15}/></button></form></section></div></div>}
-function SettingsView(){const [dark,setDark]=useState(false);const [accent,setAccent]=useState('purple');const [saved,setSaved]=useState(false);const [profile,setProfile]=useState({name:'Alex Lee',email:'alex.lee@example.com'});const [notifs,setNotifs]=useState({daily:true,friend:true,focus:false});useEffect(()=>{document.documentElement.dataset.theme=dark?'dark':'light';document.documentElement.dataset.accent=accent},[dark,accent]);return <div><PageTitle eyebrow="YOUR SPACE" title="Settings"/><div className="settings-grid"><section className="panel setting-section"><h3>Profile</h3><label>Display name<input value={profile.name} onChange={e=>setProfile({...profile,name:e.target.value})}/></label><label>Email address<input value={profile.email} onChange={e=>setProfile({...profile,email:e.target.value})}/></label><button className="primary-button" onClick={()=>setSaved(true)}>{saved?'Saved':'Save profile'}</button></section><section className="panel setting-section"><h3>Appearance</h3><div className="setting-control"><span>Dark mode</span><button className={`toggle ${dark?'on':''}`} onClick={()=>setDark(!dark)} aria-label="Toggle dark mode"><span/></button></div><div className="setting-control"><span>Accent color</span><div className="accent-options">{['purple','peach','mint','blue'].map(x=><button key={x} className={`accent-dot ${x} ${accent===x?'chosen':''}`} onClick={()=>setAccent(x)} aria-label={`Use ${x} accent`}/>)}</div></div></section><section className="panel setting-section"><h3>Notifications</h3>{[['daily','Daily reminders'],['friend','Café friend joins'],['focus','Focus session complete']].map(([key,label])=><div className="setting-control" key={key}><span>{label}</span><button className={`toggle ${notifs[key as keyof typeof notifs]?'on':''}`} onClick={()=>setNotifs({...notifs,[key]:!notifs[key as keyof typeof notifs]})} aria-label={`Toggle ${label}`}><span/></button></div>)}</section><section className="panel setting-section"><h3>Privacy</h3><div className="setting-control"><span>Show focus status</span><Eye size={17}/></div><div className="setting-control"><span>Allow friend invites</span><Heart size={17}/></div></section></div></div>}
-function FocusView({seconds,running,setRunning}:any){return <div><PageTitle eyebrow="DEEP WORK" title="Focus Mode"/><section className="focus-room panel"><div className="focus-ambient"><div className="focus-lamp"/><div className="focus-desk"><Creature/><div className="tiny-laptop"/></div></div><div className="timer-ring"><span>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</span><small>Biology notes</small><button className="primary-button" onClick={()=>setRunning(!running)}>{running?'Pause session':'Start session'}</button></div></section></div>}
-function GardenView(){return <div><PageTitle eyebrow="GROW WITH YOUR HABITS" title="Habit Garden" action="New habit"/><section className="garden panel"><div className="garden-header"><div><h3>Your little garden</h3><p>Every consistent day helps something new bloom.</p></div><div className="garden-stats"><b>14</b><span>plants growing</span></div></div><div className="garden-grid">{[['Drink water',5,'#78b99d'],['Read',12,'#e6a36f'],['Stretch',3,'#d68bab'],['Journal',8,'#8fa3d8'],['Walk outside',2,'#d2b35d'],['Meditate',17,'#a78dc7'],['Sleep well',9,'#79a5bd'],['Study',21,'#e18686']].map(([name,streak,color])=><button className="garden-plot" key={name as string}><Plant stage={Math.min(4,Math.ceil((streak as number)/5))} color={color as string}/><b>{name}</b><span>{streak} day streak</span></button>)}</div></section></div>}
-function CollectionView(){return <div><PageTitle eyebrow="COMPANION COLLECTION" title="Creature Dex"/><div className="dex-grid">{roster.map(([name,tint,rarity])=><article className={`creature-card rarity-${rarity.toLowerCase()}`} key={name}><Creature small tint={tint} label={`${name} creature`}/><b>{name}</b><span>{rarity}</span><div className="rarity-stars">✦ ✦ ✦</div></article>)}</div></div>}
-function CalendarView(){const [selected,setSelected]=useState(16);return <div><PageTitle eyebrow="PLAN YOUR WEEK" title="Calendar" action="Add event"/><section className="calendar panel"><div className="calendar-head"><button onClick={()=>setSelected(Math.max(1,selected-1))}>‹</button><h3>October 2024</h3><button onClick={()=>setSelected(selected+1)}>›</button></div><div className="week-labels">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=><span key={x}>{x}</span>)}</div><div className="calendar-grid">{Array.from({length:35},(_,i)=><button className={i===selected?'today':''} onClick={()=>setSelected(i)} key={i}><b>{i<2?'':i-1}</b>{[5,16,22,28].includes(i)&&<i/>}</button>)}</div><p className="calendar-note">Selected day: October {Math.max(1,selected-1)} · 2 study blocks</p></section></div>}
-function InsightsView(){return <div><PageTitle eyebrow="YOUR PROGRESS" title="Insights"/><div className="insight-grid"><section className="panel chart-card"><div className="card-heading"><div><h3>Focus this week</h3><p>+18% from last week</p></div><Sparkles size={19}/></div><div className="bars">{[42,65,52,78,88,60,35].map((h,i)=><div key={i}><span style={{height:`${h}%`}}/><small>{['M','T','W','T','F','S','S'][i]}</small></div>)}</div></section><section className="panel score-card"><Star size={24}/><b>82</b><span>Focus score</span><p>Lovely momentum. Your strongest window is 9–11am.</p></section><section className="panel chart-card"><h3>Task balance</h3><div className="donut"><span>24<br/><small>tasks</small></span></div><div className="legend"><span>Study <b>58%</b></span><span>Personal <b>27%</b></span><span>Health <b>15%</b></span></div></section></div></div>}
-function AchievementsView(){return <div><PageTitle eyebrow="MILESTONES" title="Achievements"/><div className="achievement-grid">{[['First Bloom','Complete your first habit','✓'],['Early Bird','Focus before 9am','☼'],['Café Regular','Join 10 sessions','C'],['On a Roll','Keep a 7 day streak','F'],['Deep Diver','Focus for 10 hours','D'],['Kind Companion','Earn 5,000 XP','K']].map(([name,desc,icon],i)=><button className={`panel achievement ${i<4?'earned':''}`} key={name}><div className="achievement-icon">{icon}</div><div><b>{name}</b><span>{desc}</span></div>{i<4&&<Check size={18}/>}</button>)}</div></div>}
+export default function MochiDashboard(){
+
+ const { data: session } = useSession()
+
+ const userName = session?.user?.name || 'User'
+
+ const initials = userName
+   .trim()
+   .split(/\s+/)
+   .map(name => name[0])
+   .slice(0, 2)
+   .join('')
+   .toUpperCase()
+
+ const [active,setActive]=useState('Today')
+ const [tasks,setTasks]=useState(seedTasks)
+ const [filter,setFilter]=useState('All tasks')
+ const [view,setView]=useState<'list'|'board'>('list')
+ const [query,setQuery]=useState('')
+ const [showAdd,setShowAdd]=useState(false)
+ const [editing,setEditing]=useState<Task|null>(null)
+ const [seconds,setSeconds]=useState(25*60)
+ const [running,setRunning]=useState(false)
+ const [coins,setCoins]=useState(1240)
+ const [chat,setChat]=useState(['Mia sent a focus high-five','Sam joined the café'])
+ const [cafeChat,setCafeChat]=useState('')
+
+ useEffect(()=>{
+   if(!running)return
+   const id=setInterval(()=>setSeconds(s=>s?s-1:25*60),1000)
+   return()=>clearInterval(id)
+ },[running])
+
+ const visible=useMemo(
+   ()=>tasks.filter(t=>
+     (filter==='All tasks'||(filter==='Completed'&&t.done)||t.category===filter)&&
+     t.title.toLowerCase().includes(query.toLowerCase())
+   ),
+   [tasks,filter,query]
+ )
+
+ const completed=tasks.filter(t=>t.done).length
+
+ const toggle=(id:number)=>
+   setTasks(xs=>xs.map(t=>t.id===id?{...t,done:!t.done}:t))
+
+ const remove=(id:number)=>
+   setTasks(xs=>xs.filter(t=>t.id!==id))
+
+ return <main className="dashboard-shell">
+
+   <aside className="sidebar">
+
+     <div className="brand">
+       <div className="brand-mark"><Sparkles size={17}/></div>
+       <span>Mochi<span className="brand-accent">Mon</span></span>
+     </div>
+
+     <button className="profile" onClick={()=>setActive('Settings')}>
+       <div className="avatar">{initials}</div>
+       <div>
+         <b>{userName}</b>
+         <span>Level 1 · 0 XP</span>
+       </div>
+       <MoreHorizontal size={17}/>
+     </button>
+
+     <nav className="main-nav" aria-label="Primary navigation">
+       {nav.map(({label,icon:Icon})=>
+         <button
+           key={label}
+           className={`nav-item ${active===label?'active':''}`}
+           onClick={()=>setActive(label)}
+         >
+           <Icon size={18}/>
+           <span>{label}</span>
+           {label==='Today'&&<i>3</i>}
+         </button>
+       )}
+     </nav>
+
+     <div className="sidebar-label">YOUR SPACE</div>
+
+     {extraNav.map(({label,icon:Icon})=>
+       <button
+         key={label}
+         className={`nav-item ${active===label?'active':''}`}
+         onClick={()=>setActive(label)}
+       >
+         <Icon size={18}/>
+         <span>{label}</span>
+       </button>
+     )}
+
+     <div className="sidebar-bottom">
+       <div className="mini-quest">
+         <div className="quest-icon"><Flame size={17}/></div>
+         <div>
+           <b>7 day streak</b>
+           <span>Keep it going!</span>
+         </div>
+       </div>
+     </div>
+
+   </aside>
+
+   <section className="content-area">
+
+     <header className="topbar">
+
+       <div>
+         <p className="eyebrow">Wednesday, October 16, 2024</p>
+         <h1>{active==='Today'?`Good morning, ${userName}`:active}</h1>
+       </div>
+
+       <div className="top-actions">
+
+         <div className="coin-pill">
+           <Coins size={17}/>
+           {coins.toLocaleString()}
+         </div>
+
+         <button
+           className="icon-button"
+           aria-label="Messages"
+           onClick={()=>setActive('Study Café')}
+         >
+           <MessageCircle size={19}/>
+         </button>
+
+         <div className="avatar small">{initials}</div>
+
+       </div>
+
+     </header>
+
+     {(active==='Today'||active==='Tasks')&&
+       <TasksView
+         page={active}
+         tasks={tasks}
+         visible={visible}
+         completed={completed}
+         filter={filter}
+         setFilter={setFilter}
+         view={view}
+         setView={setView}
+         query={query}
+         setQuery={setQuery}
+         showAdd={showAdd}
+         setShowAdd={setShowAdd}
+         editing={editing}
+         setEditing={setEditing}
+         toggle={toggle}
+         remove={remove}
+         onSave={(t:Task)=>{
+           setTasks(xs=>xs.some(x=>x.id===t.id)?xs.map(x=>x.id===t.id?t:x):[t,...xs])
+           setShowAdd(false)
+           setEditing(null)
+           setCoins(c=>c+10)
+         }}
+       />
+     }
+
+     {active==='Study Café'&&
+       <CafeView
+         chat={chat}
+         setChat={setChat}
+         cafeChat={cafeChat}
+         setCafeChat={setCafeChat}
+       />
+     }
+
+     {active==='Settings'&&<SettingsView userName={userName} userEmail={session?.user?.email || ''}/>}
+
+     {active==='Focus Mode'&&
+       <FocusView
+         seconds={seconds}
+         running={running}
+         setRunning={setRunning}
+       />
+     }
+
+     {active==='Habit Garden'&&<GardenView/>}
+
+     {active==='Collection'&&<CollectionView/>}
+
+     {active==='Calendar'&&<CalendarView/>}
+
+     {active==='Insights'&&<InsightsView/>}
+
+     {active==='Achievements'&&<AchievementsView/>}
+
+   </section>
+
+ </main>
+}
+
+function TasksView(p:any){
+
+ const {
+   page,
+   tasks,
+   visible,
+   completed,
+   filter,
+   setFilter,
+   view,
+   setView,
+   query,
+   setQuery,
+   showAdd,
+   setShowAdd,
+   editing,
+   setEditing,
+   toggle,
+   remove,
+   onSave
+ }=p
+
+ return <>
+   <div className="progress-banner">
+
+     <div className="banner-copy">
+       <div className="sparkle-icon"><Sparkles size={21}/></div>
+       <div>
+         <b>You&apos;re on a roll!</b>
+         <span>Complete {Math.max(0,2-(5-completed))} more tasks to reach your daily goal.</span>
+       </div>
+     </div>
+
+     <div className="goal-progress">
+       <b>{completed}/5</b>
+       <div className="progress-track">
+         <div style={{width:`${Math.min(100,completed/5*100)}%`}}/>
+       </div>
+       <span>Daily goal</span>
+     </div>
+
+     <Creature small/>
+
+   </div>
+
+   <div className="dashboard-grid">
+
+     <section className="tasks-panel panel">
+
+       <div className="panel-heading">
+         <div>
+           <h2>{page==='Tasks'?(filter==='All tasks'?'All tasks':filter):(filter==='All tasks'?"Today's tasks":filter)}</h2>
+           <p>{completed} completed · {tasks.length-completed} remaining</p>
+         </div>
+
+         <button className="primary-button" onClick={()=>setShowAdd(true)}>
+           <Plus size={17}/> Add task
+         </button>
+       </div>
+
+       <div className="task-toolbar">
+
+         <div className="filter-tabs">
+           {['All tasks','Study','Personal','Health','Completed'].map(x=>
+             <button
+               key={x}
+               className={filter===x?'selected':''}
+               onClick={()=>setFilter(x)}
+             >
+               {x}
+             </button>
+           )}
+         </div>
+
+         <div className="toolbar-right">
+
+           <div className="search-box">
+             <Search size={15}/>
+             <input
+               aria-label="Search tasks"
+               placeholder="Search"
+               value={query}
+               onChange={e=>setQuery(e.target.value)}
+             />
+           </div>
+
+           <button
+             className={view==='list'?'view-active':''}
+             onClick={()=>setView('list')}
+             aria-label="List view"
+           >
+             <List size={17}/>
+           </button>
+
+           <button
+             className={view==='board'?'view-active':''}
+             onClick={()=>setView('board')}
+             aria-label="Board view"
+           >
+             <LayoutGrid size={17}/>
+           </button>
+
+         </div>
+
+       </div>
+
+       {(showAdd||editing)&&
+         <TaskForm
+           initial={editing}
+           onCancel={()=>{setShowAdd(false);setEditing(null)}}
+           onSave={onSave}
+         />
+       }
+
+       {view==='list'?
+         <div className="task-list">
+
+           {visible.length?
+             visible.map((t:Task)=>
+               <TaskRow
+                 key={t.id}
+                 task={t}
+                 toggle={toggle}
+                 remove={remove}
+                 edit={setEditing}
+               />
+             ):
+             <div className="empty-state">
+               <Target size={25}/>
+               <b>No tasks match</b>
+               <span>Try another filter or add a fresh task.</span>
+             </div>
+           }
+
+         </div>:
+
+         <div className="board-grid">
+
+           {['Today','Tomorrow','Later'].map(col=>
+             <div className="board-column" key={col}>
+               <h3>{col}</h3>
+
+               {visible
+                 .filter((t:Task)=>
+                   col==='Later'?
+                     t.due!=='Today'&&t.due!=='Tomorrow':
+                     t.due===col
+                 )
+                 .map((t:Task)=>
+                   <TaskCard key={t.id} task={t} toggle={toggle}/>
+                 )
+               }
+
+             </div>
+           )}
+
+         </div>
+       }
+
+     </section>
+
+     <aside className="right-column">
+
+       <CompanionCard/>
+
+       <section className="panel quests-card">
+
+         <div className="card-heading">
+           <h2>Today&apos;s quests</h2>
+           <button onClick={()=>setFilter('Completed')}>See all</button>
+         </div>
+
+         <Quest text="Complete 3 tasks" reward="+50 coins" done={completed>=3}/>
+         <Quest text="Focus for 25 minutes" reward="+30 XP"/>
+         <Quest text="Check in with a friend" reward="+20 XP"/>
+
+       </section>
+
+       <section className="panel focus-card">
+
+         <div>
+           <span className="card-kicker">FOCUS SESSION</span>
+           <h2>25:00</h2>
+           <p>Ready when you are.</p>
+         </div>
+
+         <button
+           className="focus-play"
+           onClick={()=>{
+             setShowAdd(false)
+             window.dispatchEvent(new CustomEvent('focus-mode'))
+           }}
+         >
+           <TimerReset size={14}/> Start
+         </button>
+
+       </section>
+
+     </aside>
+
+   </div>
+ </>
+}
+
+function TaskForm({initial,onCancel,onSave}:{initial?:Task|null;onCancel:()=>void;onSave:(t:Task)=>void}){
+
+ const [title,setTitle]=useState(initial?.title||'')
+ const [due,setDue]=useState(initial?.due||'Today')
+ const [priority,setPriority]=useState<Task['priority']>(initial?.priority||'Medium')
+ const [category,setCategory]=useState(initial?.category||'Personal')
+
+ return <form
+   className="task-form"
+   onSubmit={e=>{
+     e.preventDefault()
+
+     if(title.trim())
+       onSave({
+         id:initial?.id||Date.now(),
+         title:title.trim(),
+         due,
+         priority,
+         category,
+         done:initial?.done||false,
+         subtasks:initial?.subtasks||0,
+         total:initial?.total||0
+       })
+   }}
+ >
+
+   <input
+     autoFocus
+     aria-label="Task title"
+     placeholder="Task title"
+     value={title}
+     onChange={e=>setTitle(e.target.value)}
+   />
+
+   <select aria-label="Due date" value={due} onChange={e=>setDue(e.target.value)}>
+     <option>Today</option>
+     <option>Tomorrow</option>
+     <option>Later</option>
+   </select>
+
+   <select
+     aria-label="Priority"
+     value={priority}
+     onChange={e=>setPriority(e.target.value as Task['priority'])}
+   >
+     <option>High</option>
+     <option>Medium</option>
+     <option>Low</option>
+   </select>
+
+   <select aria-label="Category" value={category} onChange={e=>setCategory(e.target.value)}>
+     <option>Study</option>
+     <option>Personal</option>
+     <option>Health</option>
+     <option>Projects</option>
+   </select>
+
+   <button className="primary-button" type="submit">
+     {initial?'Save':'Add task'}
+   </button>
+
+   <button type="button" className="text-button" onClick={onCancel}>
+     Cancel
+   </button>
+
+ </form>
+}
+
+function TaskRow({task,toggle,remove,edit}:{task:Task;toggle:(id:number)=>void;remove:(id:number)=>void;edit:(t:Task)=>void}){
+
+ return <article className={`task-row ${task.done?'is-done':''}`}>
+
+   <button
+     className="check-button"
+     onClick={()=>toggle(task.id)}
+     aria-label={`Mark ${task.title} ${task.done?'incomplete':'complete'}`}
+   >
+     {task.done?<Check size={14}/>:<Circle size={16}/>}
+   </button>
+
+   <div className="task-info">
+     <b>{task.title}</b>
+     <span>
+       <em className={`tag ${task.category.toLowerCase()}`}>{task.category}</em>
+       {task.subtasks>0&&<small>{task.subtasks}/{task.total} subtasks</small>}
+     </span>
+   </div>
+
+   <span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span>
+
+   <span className="due">
+     <Clock3 size={13}/>{task.due}
+   </span>
+
+   <button className="row-action" onClick={()=>edit(task)} aria-label={`Edit ${task.title}`}>
+     <Pencil size={14}/>
+   </button>
+
+   <button className="row-action danger" onClick={()=>remove(task.id)} aria-label={`Delete ${task.title}`}>
+     <Trash2 size={14}/>
+   </button>
+
+ </article>
+}
+
+function TaskCard({task,toggle}:{task:Task;toggle:(id:number)=>void}){
+
+ return <article className="board-card">
+
+   <button className="check-button" onClick={()=>toggle(task.id)}>
+     {task.done?<Check size={14}/>:<Circle size={16}/>}
+   </button>
+
+   <b>{task.title}</b>
+
+   <div>
+     <span className={`tag ${task.category.toLowerCase()}`}>{task.category}</span>
+     <span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span>
+   </div>
+
+ </article>
+}
+
+function CompanionCard(){
+
+ return <section className="panel companion-card">
+
+   <span className="card-kicker">YOUR COMPANION</span>
+
+   <div className="companion-content">
+
+     <Creature/>
+
+     <div>
+       <h2>Mochi</h2>
+       <p>Feeling cozy today</p>
+
+       <div className="level-line">
+         <b>Lv. 12</b>
+         <div className="progress-track">
+           <div style={{width:'72%'}}/>
+         </div>
+         <span>2,840 XP</span>
+       </div>
+
+     </div>
+
+   </div>
+
+   <div className="companion-stats">
+     <div><b>7</b><span>day streak</span></div>
+     <div><b>24</b><span>tasks done</span></div>
+     <div><b>86%</b><span>focus score</span></div>
+   </div>
+
+ </section>
+}
+
+function Quest({text,reward,done=false}:{text:string;reward:string;done?:boolean}){
+
+ const [complete,setComplete]=useState(done)
+
+ return <button
+   className={`quest-row ${complete?'is-done':''}`}
+   onClick={()=>setComplete(v=>!v)}
+   aria-pressed={complete}
+ >
+
+   <span className="quest-check">
+     {complete?<Check size={13}/>:<Circle size={15}/>}
+   </span>
+
+   <div>
+     <b>{text}</b>
+     <span>{complete?'Completed · ':''}{reward}</span>
+   </div>
+
+   <ChevronRight size={15}/>
+
+ </button>
+}
+
+function PageTitle({eyebrow,title,action,onAction}:{eyebrow:string;title:string;action?:string;onAction?:()=>void}){
+
+ return <div className="page-title">
+
+   <div>
+     <p className="eyebrow">{eyebrow}</p>
+     <h2>{title}</h2>
+   </div>
+
+   {action&&
+     <button className="primary-button" onClick={onAction}>
+       <Plus size={15}/>{action}
+     </button>
+   }
+
+ </div>
+}
+
+function CafeView({chat,setChat,cafeChat,setCafeChat}:any){
+
+ const guests=[
+   ['Alex','Review biology','mint','18:42','focus'],
+   ['Mia','Essay outline','berry','12:08','break'],
+   ['Sam','Calculus set','blue','32:15','focus'],
+   ['Jo','Away from desk','gold','—','away']
+ ]
+
+ return <div>
+
+   <PageTitle
+     eyebrow="STUDY CAFÉ · ROOM 04"
+     title="Moonbeam Café"
+     action="Invite friend"
+     onAction={()=>setChat((c:string[])=>[...c,'A new friend was invited to Moonbeam Café'])}
+   />
+
+   <div className="isometric-cafe">
+
+     <div className="cafe-backwall">
+       <div className="cafe-window"/>
+       <div className="cafe-shelf">JARS · BOOKS · TEA · PLANTS</div>
+
+       <div className="menu-board">
+         <b>MOONBEAM MENU</b>
+         <span>honey latte · 4c</span>
+         <span>berry toast · 3c</span>
+         <span>starlight tea · 2c</span>
+       </div>
+
+       <div className="string-lights">●　●　●　●　●　●</div>
+
+     </div>
+
+     <div className="floor-grid"/>
+
+     <div className="cafe-counter">
+       <span className="counter-awning"/>
+       <Creature tint="chef" small label="chef creature serving"/>
+       <div className="cups"><i/><i/><i/></div>
+     </div>
+
+     <div className="booth booth-left">
+       <Creature tint="rose" small label="creature reading"/>
+       <span className="book"/>
+     </div>
+
+     <div className="booth booth-right">
+       <Creature tint="sky" small label="creature chatting"/>
+       <Creature tint="sage" small label="creature chatting"/>
+     </div>
+
+     <div className="reserved-table">
+       <span className="nameplate">ALEX + FRIENDS</span>
+       <Creature tint="mint" small label="Alex companion reserved table"/>
+       <Creature tint="peach" small label="friend companion reserved table"/>
+       <div className="snack"/>
+       <div className="steam"/>
+     </div>
+
+     <div className="cafe-table tiny-table table-a">
+       <Creature tint="berry" small label="sleeping creature"/>
+       <span className="cup"/>
+     </div>
+
+     <div className="cafe-table tiny-table table-b">
+       <Creature tint="lavender" small label="creature with scarf"/>
+       <span className="plate"/>
+     </div>
+
+     <div className="cafe-table tiny-table table-c">
+       <Creature tint="gold" small label="creature with bow"/>
+       <span className="cup"/>
+     </div>
+
+     <div className="plant-prop">
+       <Plant stage={4} color="#75ae92"/>
+     </div>
+
+     <div className="door">
+       <span className="door-bell">●</span>
+     </div>
+
+     <div className="sparkles">✦　·　✦　·　✦</div>
+
+   </div>
+
+   <div className="cafe-layout">
+
+     <section className="panel session-panel">
+
+       <div className="card-heading">
+         <div>
+           <span className="card-kicker">LIVE SESSION</span>
+           <h2>4 friends studying</h2>
+         </div>
+
+         <span className="live-dot">Live</span>
+       </div>
+
+       {guests.map(([name,task,time,status])=>
+         <div className="friend-row" key={name}>
+
+           <div className={`avatar ${status}`}>
+             {name.slice(0,2)}
+           </div>
+
+           <div>
+             <b>{name}</b>
+             <span>{task}</span>
+           </div>
+
+           <strong>{time}</strong>
+
+           <i className={`status ${status}`}/>
+
+         </div>
+       )}
+
+     </section>
+
+     <section className="panel cafe-chat">
+
+       <div className="card-heading">
+         <h2>Café notes</h2>
+         <MessageCircle size={17}/>
+       </div>
+
+       {chat.map((x:string)=><p key={x}>{x}</p>)}
+
+       <div className="reaction-bar">
+         <button onClick={()=>setChat((c:string[])=>[...c,'Alex sent a tea reaction'])}>Tea</button>
+         <button onClick={()=>setChat((c:string[])=>[...c,'Alex sent a cheer reaction'])}>Cheer</button>
+       </div>
+
+       <form
+         onSubmit={e=>{
+           e.preventDefault()
+
+           if(cafeChat.trim()){
+             setChat((c:string[])=>[...c,`Alex: ${cafeChat.trim()}`])
+             setCafeChat('')
+           }
+         }}
+         className="chat-input"
+       >
+
+         <input
+           aria-label="Café message"
+           value={cafeChat}
+           onChange={e=>setCafeChat(e.target.value)}
+           placeholder="Say something kind..."
+         />
+
+         <button aria-label="Send message">
+           <Send size={15}/>
+         </button>
+
+       </form>
+
+     </section>
+
+   </div>
+
+ </div>
+}
+
+function SettingsView({userName,userEmail}:{userName:string;userEmail:string}){
+
+ const [dark,setDark]=useState(false)
+ const [accent,setAccent]=useState('purple')
+ const [saved,setSaved]=useState(false)
+
+ const [profile,setProfile]=useState({
+   name:'userName',
+   email:userEmail
+ })
+
+ const [notifs,setNotifs]=useState({
+   daily:true,
+   friend:true,
+   focus:false
+ })
+
+ useEffect(()=>{
+   document.documentElement.dataset.theme=dark?'dark':'light'
+   document.documentElement.dataset.accent=accent
+ },[dark,accent])
+
+ return <div>
+
+   <PageTitle eyebrow="YOUR SPACE" title="Settings"/>
+
+   <div className="settings-grid">
+
+     <section className="panel setting-section">
+
+       <h3>Profile</h3>
+
+       <label>
+         Display name
+         <input
+           value={profile.name}
+           onChange={e=>setProfile({...profile,name:e.target.value})}
+         />
+       </label>
+
+       <label>
+         Email address
+         <input
+           value={profile.email}
+           onChange={e=>setProfile({...profile,email:e.target.value})}
+         />
+       </label>
+
+       <button className="primary-button" onClick={()=>setSaved(true)}>
+         {saved?'Saved':'Save profile'}
+       </button>
+
+     </section>
+
+     <section className="panel setting-section">
+
+       <h3>Appearance</h3>
+
+       <div className="setting-control">
+         <span>Dark mode</span>
+
+         <button
+           className={`toggle ${dark?'on':''}`}
+           onClick={()=>setDark(!dark)}
+           aria-label="Toggle dark mode"
+         >
+           <span/>
+         </button>
+
+       </div>
+
+       <div className="setting-control">
+
+         <span>Accent color</span>
+
+         <div className="accent-options">
+
+           {['purple','peach','mint','blue'].map(x=>
+             <button
+               key={x}
+               className={`accent-dot ${x} ${accent===x?'chosen':''}`}
+               onClick={()=>setAccent(x)}
+               aria-label={`Use ${x} accent`}
+             />
+           )}
+
+         </div>
+
+       </div>
+
+     </section>
+
+     <section className="panel setting-section">
+
+       <h3>Notifications</h3>
+
+       {[
+         ['daily','Daily reminders'],
+         ['friend','Café friend joins'],
+         ['focus','Focus session complete']
+       ].map(([key,label])=>
+         <div className="setting-control" key={key}>
+
+           <span>{label}</span>
+
+           <button
+             className={`toggle ${notifs[key as keyof typeof notifs]?'on':''}`}
+             onClick={()=>setNotifs({
+               ...notifs,
+               [key]:!notifs[key as keyof typeof notifs]
+             })}
+             aria-label={`Toggle ${label}`}
+           >
+             <span/>
+           </button>
+
+         </div>
+       )}
+
+     </section>
+
+     <section className="panel setting-section">
+
+       <h3>Privacy</h3>
+
+       <div className="setting-control">
+         <span>Show focus status</span>
+         <Eye size={17}/>
+       </div>
+
+       <div className="setting-control">
+         <span>Allow friend invites</span>
+         <Heart size={17}/>
+       </div>
+
+     </section>
+
+   </div>
+
+ </div>
+}
+
+function FocusView({seconds,running,setRunning}:any){
+
+ return <div>
+
+   <PageTitle eyebrow="DEEP WORK" title="Focus Mode"/>
+
+   <section className="focus-room panel">
+
+     <div className="focus-ambient">
+       <div className="focus-lamp"/>
+
+       <div className="focus-desk">
+         <Creature/>
+         <div className="tiny-laptop"/>
+       </div>
+
+     </div>
+
+     <div className="timer-ring">
+
+       <span>
+         {Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}
+       </span>
+
+       <small>Biology notes</small>
+
+       <button className="primary-button" onClick={()=>setRunning(!running)}>
+         {running?'Pause session':'Start session'}
+       </button>
+
+     </div>
+
+   </section>
+
+ </div>
+}
+
+function GardenView(){
+
+ return <div>
+
+   <PageTitle eyebrow="GROW WITH YOUR HABITS" title="Habit Garden" action="New habit"/>
+
+   <section className="garden panel">
+
+     <div className="garden-header">
+
+       <div>
+         <h3>Your little garden</h3>
+         <p>Every consistent day helps something new bloom.</p>
+       </div>
+
+       <div className="garden-stats">
+         <b>14</b>
+         <span>plants growing</span>
+       </div>
+
+     </div>
+
+     <div className="garden-grid">
+
+       {[
+         ['Drink water',5,'#78b99d'],
+         ['Read',12,'#e6a36f'],
+         ['Stretch',3,'#d68bab'],
+         ['Journal',8,'#8fa3d8'],
+         ['Walk outside',2,'#d2b35d'],
+         ['Meditate',17,'#a78dc7'],
+         ['Sleep well',9,'#79a5bd'],
+         ['Study',21,'#e18686']
+       ].map(([name,streak,color])=>
+         <button className="garden-plot" key={name as string}>
+
+           <Plant
+             stage={Math.min(4,Math.ceil((streak as number)/5))}
+             color={color as string}
+           />
+
+           <b>{name}</b>
+           <span>{streak} day streak</span>
+
+         </button>
+       )}
+
+     </div>
+
+   </section>
+
+ </div>
+}
+
+function CollectionView(){
+
+ return <div>
+
+   <PageTitle eyebrow="COMPANION COLLECTION" title="Creature Dex"/>
+
+   <div className="dex-grid">
+
+     {roster.map(([name,tint,rarity])=>
+       <article
+         className={`creature-card rarity-${rarity.toLowerCase()}`}
+         key={name}
+       >
+
+         <Creature
+           small
+           tint={tint}
+           label={`${name} creature`}
+         />
+
+         <b>{name}</b>
+         <span>{rarity}</span>
+         <div className="rarity-stars">✦ ✦ ✦</div>
+
+       </article>
+     )}
+
+   </div>
+
+ </div>
+}
+
+function CalendarView(){
+
+ const [selected,setSelected]=useState(16)
+
+ return <div>
+
+   <PageTitle eyebrow="PLAN YOUR WEEK" title="Calendar" action="Add event"/>
+
+   <section className="calendar panel">
+
+     <div className="calendar-head">
+       <button onClick={()=>setSelected(Math.max(1,selected-1))}>‹</button>
+       <h3>October 2024</h3>
+       <button onClick={()=>setSelected(selected+1)}>›</button>
+     </div>
+
+     <div className="week-labels">
+       {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>
+         <span key={x}>{x}</span>
+       )}
+     </div>
+
+     <div className="calendar-grid">
+
+       {Array.from({length:35},(_,i)=>
+         <button
+           className={i===selected?'today':''}
+           onClick={()=>setSelected(i)}
+           key={i}
+         >
+           <b>{i<2?'':i-1}</b>
+           {[5,16,22,28].includes(i)&&<i/>}
+         </button>
+       )}
+
+     </div>
+
+     <p className="calendar-note">
+       Selected day: October {Math.max(1,selected-1)} · 2 study blocks
+     </p>
+
+   </section>
+
+ </div>
+}
+
+function InsightsView(){
+
+ return <div>
+
+   <PageTitle eyebrow="YOUR PROGRESS" title="Insights"/>
+
+   <div className="insight-grid">
+
+     <section className="panel chart-card">
+
+       <div className="card-heading">
+
+         <div>
+           <h3>Focus this week</h3>
+           <p>+18% from last week</p>
+         </div>
+
+         <Sparkles size={19}/>
+
+       </div>
+
+       <div className="bars">
+
+         {[42,65,52,78,88,60,35].map((h,i)=>
+           <div key={i}>
+             <span style={{height:`${h}%`}}/>
+             <small>{['M','T','W','T','F','S','S'][i]}</small>
+           </div>
+         )}
+
+       </div>
+
+     </section>
+
+     <section className="panel score-card">
+
+       <Star size={24}/>
+       <b>82</b>
+       <span>Focus score</span>
+       <p>Lovely momentum. Your strongest window is 9–11am.</p>
+
+     </section>
+
+     <section className="panel chart-card">
+
+       <h3>Task balance</h3>
+
+       <div className="donut">
+         <span>
+           24<br/>
+           <small>tasks</small>
+         </span>
+       </div>
+
+       <div className="legend">
+         <span>Study <b>58%</b></span>
+         <span>Personal <b>27%</b></span>
+         <span>Health <b>15%</b></span>
+       </div>
+
+     </section>
+
+   </div>
+
+ </div>
+}
+
+function AchievementsView(){
+
+ return <div>
+
+   <PageTitle eyebrow="MILESTONES" title="Achievements"/>
+
+   <div className="achievement-grid">
+
+     {[
+       ['First Bloom','Complete your first habit','✓'],
+       ['Early Bird','Focus before 9am','☼'],
+       ['Café Regular','Join 10 sessions','C'],
+       ['On a Roll','Keep a 7 day streak','F'],
+       ['Deep Diver','Focus for 10 hours','D'],
+       ['Kind Companion','Earn 5,000 XP','K']
+     ].map(([name,desc,icon],i)=>
+       <button
+         className={`panel achievement ${i<4?'earned':''}`}
+         key={name}
+       >
+
+         <div className="achievement-icon">{icon}</div>
+
+         <div>
+           <b>{name}</b>
+           <span>{desc}</span>
+         </div>
+
+         {i<4&&<Check size={18}/>}
+
+       </button>
+     )}
+
+   </div>
+
+ </div>
+}
 
 export { Creature as Mochi }
